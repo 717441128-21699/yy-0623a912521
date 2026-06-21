@@ -1,0 +1,99 @@
+@use '@/styles/variables.scss' as *;
+
+.page {
+  min-height: 100vh;
+  background: $color-bg-page;
+  padding-bottom: 120rpx;
+}
+
+.header {
+  padding: $spacing-lg $page-padding;
+  background: $color-bg-card;
+  border-bottom: 1rpx solid $color-border;
+}
+
+.title {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-sm;
+}
+
+.subTitle {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+}
+
+.statsBar {
+  display: flex;
+  padding: $spacing-md $page-padding;
+  background: $color-bg-card;
+  gap: $spacing-sm;
+  margin-bottom: $spacing-md;
+}
+
+.statCard {
+  flex: 1;
+  padding: $spacing-md;
+  background: $color-bg-page;
+  border-radius: $radius-md;
+  text-align: center;
+
+  .statNum {
+    font-size: $font-size-xl;
+    font-weight: $font-weight-bold;
+    color: $color-primary;
+  }
+
+  .statLabel {
+    font-size: $font-size-xs;
+    color: $color-text-tertiary;
+    margin-top: 4rpx;
+  }
+}
+
+.filterBar {
+  padding: 0 $page-padding;
+  margin-bottom: $spacing-md;
+}
+
+.taskList {
+  padding: 0 $page-padding;
+}
+
+.emptyState {
+  padding: $spacing-xl 0;
+  text-align: center;
+
+  .emptyText {
+    font-size: $font-size-md;
+    color: $color-text-tertiary;
+  }
+}
+
+.fab {
+  position: fixed;
+  right: $spacing-lg;
+  bottom: 140rpx;
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: $radius-round;
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8rpx 24rpx rgba(232, 62, 140, 0.4);
+  z-index: 100;
+  transition: all $transition-base;
+
+  &:active {
+    transform: scale(0.9);
+    opacity: 0.9;
+  }
+
+  .fabIcon {
+    font-size: 48rpx;
+    color: $color-text-white;
+    font-weight: $font-weight-light;
+  }
+}

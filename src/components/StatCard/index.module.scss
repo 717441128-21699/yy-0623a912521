@@ -1,0 +1,37 @@
+@use '@/styles/variables.scss' as *;
+
+.statCard {
+  padding: $spacing-lg;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-card;
+
+  .title {
+    font-size: $font-size-sm;
+    color: $color-text-secondary;
+    margin-bottom: $spacing-sm;
+    display: block;
+  }
+
+  .valueRow {
+    display: flex;
+    align-items: baseline;
+
+    .value {
+      font-size: $font-size-xxl;
+      font-weight: $font-weight-bold;
+      line-height: 1.2;
+    }
+
+    .unit {
+      font-size: $font-size-sm;
+      color: $color-text-tertiary;
+      margin-left: $spacing-xs;
+    }
+  }
+
+  .trend {
+    font-size: $font-size-xs;
+    margin-top: $spacing-sm;
+    display: block;
+  }
+}

@@ -1,0 +1,42 @@
+@use '@/styles/variables.scss' as *;
+
+.filterBar {
+  white-space: nowrap;
+  padding: $spacing-md 0;
+
+  :global {
+    .scroll-x-container {
+      white-space: nowrap;
+    }
+  }
+}
+
+.filterItem {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16rpx 28rpx;
+  margin-right: $spacing-md;
+  background: $color-bg-card;
+  border-radius: $radius-button;
+  transition: all $transition-base;
+
+  &:last-child {
+    margin-right: 0;
+  }
+
+  &.active {
+    background: $color-primary;
+
+    .filterText {
+      color: $color-text-white;
+      font-weight: $font-weight-medium;
+    }
+  }
+}
+
+.filterText {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  white-space: nowrap;
+}
