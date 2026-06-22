@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react'
-import { View, Text, ScrollView } from '@tarojs/components'
+import React, { useState, useMemo } from 'react'
+import { View, Text, Input, ScrollView } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { useAppStore } from '@/store'
 import { getCardCategoryName, getCardCategoryColor } from '@/data/cards'
@@ -10,6 +10,7 @@ import {
   formatMoney,
   getProgressPercent
 } from '@/utils'
+import dayjs from 'dayjs'
 import styles from './index.module.scss'
 
 const CardDetailPage: React.FC = () => {
@@ -19,6 +20,13 @@ const CardDetailPage: React.FC = () => {
   const cards = useAppStore((s) => s.cards)
   const customers = useAppStore((s) => s.customers)
   const linkRenewalCard = useAppStore((s) => s.linkRenewalCard)
+  const addCard = useAppStore((s) => s.addCard)
+
+  const [showCreateForm, setShowCreateForm] = useState(false)
+  const [newCardName, setNewCardName] = useState('')
+  const [newCardTotalTimes, setNewCardTotalTimes] = useState('')
+  const [newCardPrice, setNewCardPrice] = useState('')
+  const [newCardExpiryDays, setNewCardExpiryDays] = useState('365')
 
   const card = useMemo(() => {
     return cards.find((c) => c.id === cardId) || cards[0]
@@ -69,6 +77,53 @@ const CardDetailPage: React.FC = () => {
     Taro.showToast({ title: '关联成功', icon: 'success' })
   }
 
+  const handleSubmitNewCard = () => {
+    if (!newCardName.trim()) {
+      Taro.showToast({ title: '请输入卡名', icon: 'none' })
+      return
+    }
+    if (!newCardTotalTimes || Number(newCardTotalTimes) <= 0) {
+      Taro.showToast({ title: '请输入次数', icon: 'none' })
+      return
+    }
+    if (!newCardPrice || Number(newCardPrice) <= 0) {
+      Taro.showToast({ title: '请输入卡价', icon: 'none' })
+      return
+    }
+
+    const days = Number(newCardExpiryDays) || 365
+    const today = dayjs()
+    const newExpiryDate = today.add(days, 'day').format('YYYY-MM-DD')
+    const todayStr = today.format('YYYY-MM-DD')
+
+    const baseCardName = card.name.replace(/(超值|升级版|疗程|套餐)?卡$/, '').trim()
+    const finalName = newCardName.trim() || `${baseCardName}续卡`
+
+    const newId = addCard({
+      name: finalName,
+      category: card.category,
+      totalTimes: Number(newCardTotalTimes),
+      usedTimes: 0,
+      expiryDate: newExpiryDate,
+      lastTreatmentDate: todayStr,
+      customerId: card.customerId,
+      treatmentRecords: [],
+      originalCardId: card.id,
+      price: Number(newCardPrice)
+    })
+
+    setShowCreateForm(false)
+    setNewCardName('')
+    setNewCardTotalTimes('')
+    setNewCardPrice('')
+    setNewCardExpiryDays('365')
+
+    Taro.showToast({ title: '已创建并关联', icon: 'success' })
+    setTimeout(() => {
+      Taro.redirectTo({ url: `/pages/card-detail/index?id=${newId}` })
+    }, 1200)
+  }
+
   const handleRefresh = () => {
     setTimeout(() => {
       Taro.stopPullDownRefresh()
@@ -84,19 +139,21 @@ const CardDetailPage: React.FC = () => {
         }}
       >
         <Text className={styles.cardName}>{card.name}</Text>
-        <View className={styles.cardCategory}>
-          <Text>{getCardCategoryName(card.category)}</Text>
+        <View style={{ display: 'flex', alignItems: 'center', marginTop: 16 }}>
+          <View className={styles.cardCategory}>
+            <Text>{getCardCategoryName(card.category)}</Text>
+          </View>
+          {card.originalCardId && (
+            <View className={styles.originalCardTag}>
+              <Text>续卡</Text>
+            </View>
+          )}
+          {isRenewed && (
+            <View className={styles.renewedTag}>
+              <Text>已续新卡</Text>
+            </View>
+          )}
         </View>
-        {card.originalCardId && (
-          <View className={styles.originalCardTag}>
-            <Text>续卡</Text>
-          </View>
-        )}
-        {isRenewed && (
-          <View className={styles.renewedTag}>
-            <Text>已续新卡</Text>
-          </View>
-        )}
 
         <View className={styles.progressSection}>
           <View className={styles.progressInfo}>
@@ -154,7 +211,7 @@ const CardDetailPage: React.FC = () => {
             </View>
             {card.originalCardId && originalCard && (
               <View className={styles.infoRow}>
-                <Text className={styles.infoKey}>关联原卡</Text>
+                <Text className={styles.infoKey}>来源原卡</Text>
                 <Text className={styles.infoValueText} style={{ color: '#722ed1' }}>
                   {originalCard.name}
                 </Text>
@@ -176,28 +233,92 @@ const CardDetailPage: React.FC = () => {
             <View className={styles.renewalCard}>
               <Text className={styles.renewalTitle}>续卡关联</Text>
               <Text className={styles.renewalDesc}>
-                此卡剩余次数不足，如客户已续卡，请关联新卡避免重复承诺
+                此卡剩余次数不足，客户已成交续卡请创建或关联新卡，避免后续重复承诺权益
               </Text>
-              {availableRenewalCards.length > 0 ? (
-                <View className={styles.renewalOptions}>
-                  {availableRenewalCards.map((c) => (
-                    <View
-                      key={c.id}
-                      className={styles.renewalOption}
-                      onClick={() => handleLinkRenewal(c.id)}
-                    >
-                      <Text className={styles.renewalOptionName}>{c.name}</Text>
-                      <Text className={styles.renewalOptionInfo}>
-                        {c.usedTimes}/{c.totalTimes}次 · 到期{formatDate(c.expiryDate)}
-                      </Text>
-                    </View>
-                  ))}
+
+              {availableRenewalCards.length > 0 && (
+                <View style={{ marginBottom: 24 }}>
+                  <Text className={styles.renewalListLabel}>可直接关联的同类型新卡</Text>
+                  <View className={styles.renewalOptions}>
+                    {availableRenewalCards.map((c) => (
+                      <View
+                        key={c.id}
+                        className={styles.renewalOption}
+                        onClick={() => handleLinkRenewal(c.id)}
+                      >
+                        <Text className={styles.renewalOptionName}>{c.name}</Text>
+                        <Text className={styles.renewalOptionInfo}>
+                          {c.usedTimes}/{c.totalTimes}次 · 到期{formatDate(c.expiryDate)}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              {!showCreateForm ? (
+                <View className={styles.createCardBtn} onClick={() => setShowCreateForm(true)}>
+                  <Text style={{ color: '#fff' }}>+ 录入新成交续卡</Text>
                 </View>
               ) : (
-                <View className={styles.noRenewalCard}>
-                  <Text className={styles.noRenewalText}>
-                    暂无可关联的同类型新卡，请先为客户创建新卡
-                  </Text>
+                <View className={styles.createCardForm}>
+                  <Text className={styles.formTitle}>新续卡信息</Text>
+
+                  <View className={styles.formItem}>
+                    <Text className={styles.formLabel}>卡名</Text>
+                    <Input
+                      className={styles.formInput}
+                      placeholder="请输入续卡名称"
+                      value={newCardName}
+                      onInput={(e) => setNewCardName(e.detail.value)}
+                    />
+                  </View>
+
+                  <View className={styles.formRow}>
+                    <View className={styles.formItemHalf}>
+                      <Text className={styles.formLabel}>总次数</Text>
+                      <Input
+                        className={styles.formInput}
+                        type="number"
+                        placeholder="10"
+                        value={newCardTotalTimes}
+                        onInput={(e) => setNewCardTotalTimes(e.detail.value)}
+                      />
+                    </View>
+                    <View className={styles.formItemHalf}>
+                      <Text className={styles.formLabel}>卡价 (元)</Text>
+                      <Input
+                        className={styles.formInput}
+                        type="digit"
+                        placeholder="9800"
+                        value={newCardPrice}
+                        onInput={(e) => setNewCardPrice(e.detail.value)}
+                      />
+                    </View>
+                  </View>
+
+                  <View className={styles.formItem}>
+                    <Text className={styles.formLabel}>有效期 (天)</Text>
+                    <Input
+                      className={styles.formInput}
+                      type="number"
+                      placeholder="365"
+                      value={newCardExpiryDays}
+                      onInput={(e) => setNewCardExpiryDays(e.detail.value)}
+                    />
+                  </View>
+
+                  <View className={styles.formActions}>
+                    <View
+                      className={styles.formBtnOutline}
+                      onClick={() => setShowCreateForm(false)}
+                    >
+                      <Text>取消</Text>
+                    </View>
+                    <View className={styles.formBtnPrimary} onClick={handleSubmitNewCard}>
+                      <Text>创建并关联</Text>
+                    </View>
+                  </View>
                 </View>
               )}
             </View>

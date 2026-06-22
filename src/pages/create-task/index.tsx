@@ -60,8 +60,8 @@ const CreateTaskPage: React.FC = () => {
 
     Taro.showToast({ title: '创建成功', icon: 'success' })
     setTimeout(() => {
-      Taro.navigateBack()
-    }, 1500)
+      Taro.switchTab({ url: '/pages/tasks/index' })
+    }, 1200)
   }
 
   const handleCancel = () => {

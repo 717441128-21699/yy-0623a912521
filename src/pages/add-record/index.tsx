@@ -72,7 +72,10 @@ const AddRecordPage: React.FC = () => {
       content,
       result,
       nextFollowDate: nextFollowDate || undefined,
-      consultant: '张咨询师'
+      consultant: '张咨询师',
+      churnReasons: attitude === 'negative' && selectedChurnReasons.length > 0
+        ? selectedChurnReasons
+        : undefined
     })
 
     if (attitude === 'negative' && selectedChurnReasons.length > 0) {

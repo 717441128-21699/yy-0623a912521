@@ -68,6 +68,7 @@ export interface CommunicationRecord {
   result: string
   nextFollowDate?: string
   consultant: string
+  churnReasons?: ChurnReason[]
 }
 
 export type ChurnReason = 'price' | 'recovery' | 'effect' | 'other'

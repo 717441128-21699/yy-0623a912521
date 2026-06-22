@@ -21,28 +21,42 @@ const DashboardPage: React.FC = () => {
   const churnMarks = useAppStore((s) => s.churnMarks)
 
   const stats = useMemo(() => {
+    const isRenewed = (cardId: string) =>
+      cards.some((other) => other.originalCardId === cardId)
+
+    const renewedCards = cards.filter((c) => c.originalCardId)
+    const renewedCount = renewedCards.length
+
+    const pendingRenewal = cards.filter((c) => {
+      if (c.originalCardId) return false
+      if (isRenewed(c.id)) return false
+      const remainder = getRemainder(c.usedTimes, c.totalTimes)
+      const days = getDaysRemaining(c.expiryDate)
+      return (remainder <= 2 && remainder > 0) || (days <= 30 && days >= 0)
+    })
+
+    const totalRenewalPool = renewedCount + pendingRenewal.length
+    const renewalRate =
+      totalRenewalPool > 0
+        ? Math.min(100, Math.round((renewedCount / totalRenewalPool) * 100))
+        : 0
+
     const activeCards = cards.filter((c) => {
       if (c.originalCardId) return true
-      const isRenewed = cards.some((other) => other.originalCardId === c.id)
-      return !isRenewed
+      return !isRenewed(c.id)
     })
 
     const totalTasks = tasks.length
     const completedTasks = tasks.filter((t) => t.status === 'completed').length
     const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
 
-    const churnCustomers = customers.filter((c) => {
+    const churnCustomerIds = new Set<string>()
+    for (const c of customers) {
       const days = getDaysSince(c.lastVisitDate)
-      return days > 30
-    }).length
-
-    const renewedCount = cards.filter((c) => c.originalCardId).length
-    const totalExpiringOrLow = activeCards.filter((c) => {
-      const remainder = getRemainder(c.usedTimes, c.totalTimes)
-      const days = getDaysRemaining(c.expiryDate)
-      return (remainder <= 2 && remainder > 0) || (days <= 30 && days >= 0)
-    }).length
-    const renewalRate = totalExpiringOrLow > 0 ? Math.round((renewedCount / totalExpiringOrLow) * 100) : 0
+      if (days > 30) churnCustomerIds.add(c.id)
+    }
+    for (const m of churnMarks) churnCustomerIds.add(m.customerId)
+    const churnCustomers = churnCustomerIds.size
 
     const lowRemainderCount = activeCards.filter((card) => {
       const remainder = getRemainder(card.usedTimes, card.totalTimes)
@@ -56,7 +70,9 @@ const DashboardPage: React.FC = () => {
 
     const todayStr = new Date().toISOString().split('T')[0]
     const todayTasks = tasks.filter((t) => t.dueDate === todayStr).length
-    const todayCompleted = tasks.filter((t) => t.dueDate === todayStr && t.status === 'completed').length
+    const todayCompleted = tasks.filter(
+      (t) => t.dueDate === todayStr && t.status === 'completed'
+    ).length
 
     return {
       completionRate,
@@ -69,29 +85,62 @@ const DashboardPage: React.FC = () => {
       todayTasks,
       todayCompleted,
       renewedCount,
-      totalExpiringOrLow
+      pendingRenewalCount: pendingRenewal.length,
+      totalExpiringOrLow: totalRenewalPool
     }
-  }, [customers, cards, tasks, records])
+  }, [customers, cards, tasks, records, churnMarks])
 
   const churnCustomerList = useMemo(() => {
-    return customers
-      .filter((c) => {
-        const days = getDaysSince(c.lastVisitDate)
-        return days > 20
-      })
-      .slice(0, 5)
-      .map((c) => {
+    const churnMarkedCustomerIds = new Set(churnMarks.map((m) => m.customerId))
+    const negativeRecordCustomerIds = new Set(
+      records.filter((r) => r.attitude === 'negative').map((r) => r.customerId)
+    )
+
+    const selected: Set<string> = new Set()
+    const result = []
+
+    for (const c of customers) {
+      let included = false
+      let hasChurnMark = churnMarkedCustomerIds.has(c.id)
+      let daysAgo = getDaysSince(c.lastVisitDate)
+
+      if (hasChurnMark) {
+        included = true
+      } else if (negativeRecordCustomerIds.has(c.id) && daysAgo > 10) {
+        included = true
+      } else if (daysAgo > 20) {
+        included = true
+      }
+
+      if (included && !selected.has(c.id)) {
+        selected.add(c.id)
         const churnMark = churnMarks.find((m) => m.customerId === c.id)
         const negativeRecords = records.filter(
           (r) => r.customerId === c.id && r.attitude === 'negative'
         )
-        return {
-          ...c,
-          daysAgo: getDaysSince(c.lastVisitDate),
-          churnReason: churnMark ? churnReasonMap[churnMark.reason] || churnMark.remark : null,
-          hasNegativeRecord: negativeRecords.length > 0
+
+        let churnReason: string | null = null
+        if (churnMark) {
+          churnReason = churnReasonMap[churnMark.reason] || churnMark.remark
+        } else if (negativeRecords.length > 0) {
+          const lastNeg = negativeRecords[0]
+          if (lastNeg.churnReasons && lastNeg.churnReasons.length > 0) {
+            churnReason = lastNeg.churnReasons
+              .map((r) => churnReasonMap[r] || r)
+              .join('、')
+          }
         }
-      })
+
+        result.push({
+          ...c,
+          daysAgo,
+          churnReason,
+          hasNegativeRecord: negativeRecords.length > 0
+        })
+      }
+    }
+
+    return result.slice(0, 5)
   }, [customers, churnMarks, records])
 
   const categoryStats = useMemo(() => {
@@ -239,7 +288,7 @@ const DashboardPage: React.FC = () => {
                 已续卡 {stats.renewedCount} 张
               </Text>
               <Text className={styles.progressLabel}>
-                待续卡 {stats.totalExpiringOrLow} 张
+                待续卡 {stats.pendingRenewalCount} 张
               </Text>
             </View>
           </View>
