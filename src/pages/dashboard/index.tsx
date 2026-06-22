@@ -1,42 +1,62 @@
 import React, { useMemo } from 'react'
 import { View, Text, Image, ScrollView } from '@tarojs/components'
 import Taro from '@tarojs/taro'
-import { mockCustomers } from '@/data/customers'
-import { mockCards, getCardCategoryName, getCardCategoryColor } from '@/data/cards'
-import { mockTasks } from '@/data/tasks'
-import { getRemainder, getDaysRemaining, formatDate } from '@/utils'
+import { useAppStore } from '@/store'
+import { getCardCategoryName, getCardCategoryColor } from '@/data/cards'
+import { getRemainder, getDaysRemaining, getDaysSince, formatDate } from '@/utils'
 import styles from './index.module.scss'
 
+const churnReasonMap: Record<string, string> = {
+  price: '价格犹豫',
+  recovery: '恢复期不便',
+  effect: '效果不明显',
+  other: '其他原因'
+}
+
 const DashboardPage: React.FC = () => {
+  const customers = useAppStore((s) => s.customers)
+  const cards = useAppStore((s) => s.cards)
+  const tasks = useAppStore((s) => s.tasks)
+  const records = useAppStore((s) => s.records)
+  const churnMarks = useAppStore((s) => s.churnMarks)
+
   const stats = useMemo(() => {
-    const totalTasks = mockTasks.length
-    const completedTasks = mockTasks.filter(t => t.status === 'completed').length
+    const activeCards = cards.filter((c) => {
+      if (c.originalCardId) return true
+      const isRenewed = cards.some((other) => other.originalCardId === c.id)
+      return !isRenewed
+    })
+
+    const totalTasks = tasks.length
+    const completedTasks = tasks.filter((t) => t.status === 'completed').length
     const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
 
-    const churnCustomers = mockCustomers.filter(c => {
-      const days = getDaysRemaining(c.lastVisitDate) * -1
+    const churnCustomers = customers.filter((c) => {
+      const days = getDaysSince(c.lastVisitDate)
       return days > 30
     }).length
 
-    const lowRemainderCount = mockCards.filter(card => {
+    const renewedCount = cards.filter((c) => c.originalCardId).length
+    const totalExpiringOrLow = activeCards.filter((c) => {
+      const remainder = getRemainder(c.usedTimes, c.totalTimes)
+      const days = getDaysRemaining(c.expiryDate)
+      return (remainder <= 2 && remainder > 0) || (days <= 30 && days >= 0)
+    }).length
+    const renewalRate = totalExpiringOrLow > 0 ? Math.round((renewedCount / totalExpiringOrLow) * 100) : 0
+
+    const lowRemainderCount = activeCards.filter((card) => {
       const remainder = getRemainder(card.usedTimes, card.totalTimes)
       return remainder <= 2 && remainder > 0
     }).length
 
-    const expiringCount = mockCards.filter(card => {
+    const expiringCount = activeCards.filter((card) => {
       const days = getDaysRemaining(card.expiryDate)
       return days <= 30 && days >= 0
     }).length
 
-    const todayTasks = mockTasks.filter(t => {
-      return t.dueDate === '2026-06-22'
-    }).length
-
-    const todayCompleted = mockTasks.filter(t => {
-      return t.dueDate === '2026-06-22' && t.status === 'completed'
-    }).length
-
-    const renewalRate = 65
+    const todayStr = new Date().toISOString().split('T')[0]
+    const todayTasks = tasks.filter((t) => t.dueDate === todayStr).length
+    const todayCompleted = tasks.filter((t) => t.dueDate === todayStr && t.status === 'completed').length
 
     return {
       completionRate,
@@ -47,32 +67,42 @@ const DashboardPage: React.FC = () => {
       lowRemainderCount,
       expiringCount,
       todayTasks,
-      todayCompleted
+      todayCompleted,
+      renewedCount,
+      totalExpiringOrLow
     }
-  }, [])
+  }, [customers, cards, tasks, records])
 
-  const churnCustomers = useMemo(() => {
-    return mockCustomers
-      .filter(c => {
-        const days = getDaysRemaining(c.lastVisitDate) * -1
+  const churnCustomerList = useMemo(() => {
+    return customers
+      .filter((c) => {
+        const days = getDaysSince(c.lastVisitDate)
         return days > 20
       })
       .slice(0, 5)
-      .map(c => ({
-        ...c,
-        daysAgo: getDaysRemaining(c.lastVisitDate) * -1
-      }))
-  }, [])
+      .map((c) => {
+        const churnMark = churnMarks.find((m) => m.customerId === c.id)
+        const negativeRecords = records.filter(
+          (r) => r.customerId === c.id && r.attitude === 'negative'
+        )
+        return {
+          ...c,
+          daysAgo: getDaysSince(c.lastVisitDate),
+          churnReason: churnMark ? churnReasonMap[churnMark.reason] || churnMark.remark : null,
+          hasNegativeRecord: negativeRecords.length > 0
+        }
+      })
+  }, [customers, churnMarks, records])
 
   const categoryStats = useMemo(() => {
     const categories = ['water', 'photo', 'hair', 'antiaging']
-    return categories.map(cat => ({
+    return categories.map((cat) => ({
       category: cat,
-      count: mockCards.filter(card => card.category === cat).length,
+      count: cards.filter((card) => card.category === cat).length,
       name: getCardCategoryName(cat),
       color: getCardCategoryColor(cat)
     }))
-  }, [])
+  }, [cards])
 
   const handleCustomerClick = (customerId: string) => {
     Taro.navigateTo({
@@ -96,20 +126,19 @@ const DashboardPage: React.FC = () => {
           <View className={styles.statItem}>
             <Text className={styles.statValue}>{stats.completionRate}%</Text>
             <Text className={styles.statLabel}>跟进完成率</Text>
-            <Text className={styles.statTrend}>↑ 较上周+5%</Text>
           </View>
           <View className={styles.statItem}>
             <Text className={styles.statValue}>{stats.churnCustomers}</Text>
             <Text className={styles.statLabel}>流失风险客户</Text>
-            <Text className={styles.statTrend} style={{ color: '#ff7d00' }}>需关注</Text>
           </View>
           <View className={styles.statItem}>
             <Text className={styles.statValue}>{stats.renewalRate}%</Text>
             <Text className={styles.statLabel}>续卡转化率</Text>
-            <Text className={styles.statTrend}>↑ 较上月+8%</Text>
           </View>
           <View className={styles.statItem}>
-            <Text className={styles.statValue}>{stats.todayCompleted}/{stats.todayTasks}</Text>
+            <Text className={styles.statValue}>
+              {stats.todayCompleted}/{stats.todayTasks}
+            </Text>
             <Text className={styles.statLabel}>今日完成/待办</Text>
           </View>
         </View>
@@ -137,9 +166,7 @@ const DashboardPage: React.FC = () => {
               <Text className={styles.progressLabel}>
                 已完成 {stats.completedTasks} 个
               </Text>
-              <Text className={styles.progressLabel}>
-                共 {stats.totalTasks} 个任务
-              </Text>
+              <Text className={styles.progressLabel}>共 {stats.totalTasks} 个任务</Text>
             </View>
           </View>
         </View>
@@ -147,31 +174,30 @@ const DashboardPage: React.FC = () => {
         <View className={styles.section}>
           <View className={styles.sectionHeader}>
             <Text className={styles.sectionTitle}>即将流失客户</Text>
-            <Text
-              className={styles.sectionAction}
-              onClick={() => {}}
-            >
+            <Text className={styles.sectionAction} onClick={() => {}}>
               查看全部
             </Text>
           </View>
 
           <View className={styles.cardList}>
-            {churnCustomers.map(customer => (
+            {churnCustomerList.map((customer) => (
               <View
                 key={customer.id}
                 className={styles.churnCard}
                 onClick={() => handleCustomerClick(customer.id)}
               >
-                <Image
-                  className={styles.avatar}
-                  src={customer.avatar}
-                  mode="aspectFill"
-                />
+                <Image className={styles.avatar} src={customer.avatar} mode="aspectFill" />
                 <View className={styles.churnInfo}>
                   <Text className={styles.churnName}>{customer.name}</Text>
                   <Text className={styles.churnReason}>
                     上次到店：{formatDate(customer.lastVisitDate)}
                   </Text>
+                  {customer.churnReason && (
+                    <Text className={styles.churnTag}>原因：{customer.churnReason}</Text>
+                  )}
+                  {customer.hasNegativeRecord && !customer.churnReason && (
+                    <Text className={styles.churnTagNegative}>有消极沟通记录</Text>
+                  )}
                 </View>
                 <Text className={styles.churnDays}>{customer.daysAgo}天未到店</Text>
               </View>
@@ -185,13 +211,10 @@ const DashboardPage: React.FC = () => {
           </View>
 
           <View className={styles.categoryStats}>
-            {categoryStats.map(item => (
+            {categoryStats.map((item) => (
               <View key={item.category} className={styles.categoryItem}>
                 <Text className={styles.categoryName}>{item.name}</Text>
-                <Text
-                  className={styles.categoryValue}
-                  style={{ color: item.color }}
-                >
+                <Text className={styles.categoryValue} style={{ color: item.color }}>
                   {item.count}
                 </Text>
               </View>
@@ -213,10 +236,10 @@ const DashboardPage: React.FC = () => {
             </View>
             <View className={styles.progressLabels}>
               <Text className={styles.progressLabel}>
-                次数不足 {stats.lowRemainderCount} 张
+                已续卡 {stats.renewedCount} 张
               </Text>
               <Text className={styles.progressLabel}>
-                即将到期 {stats.expiringCount} 张
+                待续卡 {stats.totalExpiringOrLow} 张
               </Text>
             </View>
           </View>

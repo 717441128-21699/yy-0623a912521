@@ -3,14 +3,13 @@ import { View, Text, ScrollView } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import FilterBar from '@/components/FilterBar'
 import RecordItem from '@/components/RecordItem'
-import { mockRecords } from '@/data/records'
-import { CommunicationRecord } from '@/types'
+import { useAppStore } from '@/store'
 import styles from './index.module.scss'
 
 type FilterType = 'all' | 'phone' | 'wechat' | 'visit' | 'positive' | 'negative'
 
 const RecordsPage: React.FC = () => {
-  const [records] = useState<CommunicationRecord[]>(mockRecords)
+  const records = useAppStore((s) => s.records)
   const [filterType, setFilterType] = useState<FilterType>('all')
 
   const filterOptions = [
@@ -25,21 +24,21 @@ const RecordsPage: React.FC = () => {
   const filteredRecords = useMemo(() => {
     switch (filterType) {
       case 'phone':
-        return records.filter(r => r.type === 'phone')
+        return records.filter((r) => r.type === 'phone')
       case 'wechat':
-        return records.filter(r => r.type === 'wechat')
+        return records.filter((r) => r.type === 'wechat')
       case 'visit':
-        return records.filter(r => r.type === 'visit')
+        return records.filter((r) => r.type === 'visit')
       case 'positive':
-        return records.filter(r => r.attitude === 'positive')
+        return records.filter((r) => r.attitude === 'positive')
       case 'negative':
-        return records.filter(r => r.attitude === 'negative')
+        return records.filter((r) => r.attitude === 'negative')
       default:
         return records
     }
   }, [records, filterType])
 
-  const handleRecordClick = (record: CommunicationRecord) => {
+  const handleRecordClick = (record: any) => {
     Taro.navigateTo({
       url: `/pages/customer-detail/index?id=${record.customerId}`
     })
@@ -79,7 +78,7 @@ const RecordsPage: React.FC = () => {
         onRefresherRefresh={handleRefresh}
       >
         {filteredRecords.length > 0 ? (
-          filteredRecords.map(record => (
+          filteredRecords.map((record) => (
             <RecordItem
               key={record.id}
               record={record}

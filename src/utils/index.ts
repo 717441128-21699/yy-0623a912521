@@ -102,3 +102,21 @@ export const getStatusColor = (status: string): string => {
   }
   return map[status] || '#86909c'
 }
+
+export const getAttitudeName = (attitude: string): string => {
+  const map: Record<string, string> = {
+    positive: '积极',
+    neutral: '一般',
+    negative: '消极'
+  }
+  return map[attitude] || attitude
+}
+
+export const getAttitudeColor = (attitude: string): string => {
+  const map: Record<string, string> = {
+    positive: '#00b42a',
+    neutral: '#ff7d00',
+    negative: '#f53f3f'
+  }
+  return map[attitude] || '#86909c'
+}

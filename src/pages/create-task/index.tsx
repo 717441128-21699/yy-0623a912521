@@ -2,8 +2,7 @@ import React, { useState, useMemo } from 'react'
 import { View, Text, Input, Textarea } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { taskTemplates } from '@/data/tasks'
-import { mockCustomers } from '@/data/customers'
-import { mockCards } from '@/data/cards'
+import { useAppStore } from '@/store'
 import { TaskPriority } from '@/types'
 import dayjs from 'dayjs'
 import styles from './index.module.scss'
@@ -13,13 +12,17 @@ const CreateTaskPage: React.FC = () => {
   const customerId = router.params.customerId
   const cardId = router.params.cardId
 
+  const customers = useAppStore((s) => s.customers)
+  const cards = useAppStore((s) => s.cards)
+  const addTask = useAppStore((s) => s.addTask)
+
   const customer = useMemo(() => {
-    return mockCustomers.find(c => c.id === customerId)
-  }, [customerId])
+    return customers.find((c) => c.id === customerId)
+  }, [customers, customerId])
 
   const card = useMemo(() => {
-    return mockCards.find(c => c.id === cardId)
-  }, [cardId])
+    return cards.find((c) => c.id === cardId)
+  }, [cards, cardId])
 
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
@@ -28,7 +31,7 @@ const CreateTaskPage: React.FC = () => {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
 
   const handleTemplateSelect = (templateId: string) => {
-    const template = taskTemplates.find(t => t.id === templateId)
+    const template = taskTemplates.find((t) => t.id === templateId)
     if (template) {
       setTitle(template.title)
       setContent(template.content)
@@ -41,6 +44,19 @@ const CreateTaskPage: React.FC = () => {
       Taro.showToast({ title: '请输入任务标题', icon: 'none' })
       return
     }
+
+    addTask({
+      customerId: customerId || '',
+      customerName: customer?.name || '',
+      cardId: cardId || undefined,
+      cardName: card?.name || undefined,
+      title,
+      content,
+      status: 'pending',
+      priority,
+      dueDate,
+      templateId: selectedTemplateId || undefined
+    })
 
     Taro.showToast({ title: '创建成功', icon: 'success' })
     setTimeout(() => {
@@ -130,7 +146,7 @@ const CreateTaskPage: React.FC = () => {
         <View className={styles.formSection}>
           <Text className={styles.sectionTitle}>快捷模板</Text>
           <View className={styles.templates}>
-            {taskTemplates.slice(0, 5).map(template => (
+            {taskTemplates.slice(0, 5).map((template) => (
               <View
                 key={template.id}
                 className={`${styles.templateItem} ${selectedTemplateId === template.id ? styles.active : ''}`}

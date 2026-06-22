@@ -3,14 +3,15 @@ import { View, Text, ScrollView } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import FilterBar from '@/components/FilterBar'
 import TaskItem from '@/components/TaskItem'
-import { mockTasks } from '@/data/tasks'
+import { useAppStore } from '@/store'
 import { FollowTask, TaskStatus } from '@/types'
 import styles from './index.module.scss'
 
 type FilterType = 'all' | 'pending' | 'in_progress' | 'completed' | 'high'
 
 const TasksPage: React.FC = () => {
-  const [tasks, setTasks] = useState<FollowTask[]>(mockTasks)
+  const tasks = useAppStore((s) => s.tasks)
+  const updateTaskStatus = useAppStore((s) => s.updateTaskStatus)
   const [filterType, setFilterType] = useState<FilterType>('all')
 
   const filterOptions = [
@@ -24,24 +25,27 @@ const TasksPage: React.FC = () => {
   const filteredTasks = useMemo(() => {
     switch (filterType) {
       case 'pending':
-        return tasks.filter(t => t.status === 'pending')
+        return tasks.filter((t) => t.status === 'pending')
       case 'in_progress':
-        return tasks.filter(t => t.status === 'in_progress')
+        return tasks.filter((t) => t.status === 'in_progress')
       case 'completed':
-        return tasks.filter(t => t.status === 'completed')
+        return tasks.filter((t) => t.status === 'completed')
       case 'high':
-        return tasks.filter(t => t.priority === 'high')
+        return tasks.filter((t) => t.priority === 'high')
       default:
         return tasks
     }
   }, [tasks, filterType])
 
-  const stats = useMemo(() => ({
-    total: tasks.length,
-    pending: tasks.filter(t => t.status === 'pending').length,
-    inProgress: tasks.filter(t => t.status === 'in_progress').length,
-    completed: tasks.filter(t => t.status === 'completed').length
-  }), [tasks])
+  const stats = useMemo(
+    () => ({
+      total: tasks.length,
+      pending: tasks.filter((t) => t.status === 'pending').length,
+      inProgress: tasks.filter((t) => t.status === 'in_progress').length,
+      completed: tasks.filter((t) => t.status === 'completed').length
+    }),
+    [tasks]
+  )
 
   const handleTaskClick = (task: FollowTask) => {
     Taro.navigateTo({
@@ -50,16 +54,13 @@ const TasksPage: React.FC = () => {
   }
 
   const handleStatusChange = (id: string) => {
-    setTasks(prev => prev.map(task => {
-      if (task.id === id) {
-        if (task.status === 'pending') {
-          return { ...task, status: 'in_progress' as TaskStatus }
-        } else if (task.status === 'in_progress') {
-          return { ...task, status: 'completed' as TaskStatus }
-        }
-      }
-      return task
-    }))
+    const task = tasks.find((t) => t.id === id)
+    if (!task) return
+    if (task.status === 'pending') {
+      updateTaskStatus(id, 'in_progress')
+    } else if (task.status === 'in_progress') {
+      updateTaskStatus(id, 'completed')
+    }
   }
 
   const handleCreateTask = () => {
@@ -115,7 +116,7 @@ const TasksPage: React.FC = () => {
         onRefresherRefresh={handleRefresh}
       >
         {filteredTasks.length > 0 ? (
-          filteredTasks.map(task => (
+          filteredTasks.map((task) => (
             <TaskItem
               key={task.id}
               task={task}

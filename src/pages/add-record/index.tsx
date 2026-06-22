@@ -1,22 +1,33 @@
 import React, { useState, useMemo } from 'react'
 import { View, Text, Textarea } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
-import { mockCustomers } from '@/data/customers'
+import { useAppStore } from '@/store'
 import { CommunicationType, CustomerAttitude, ChurnReason } from '@/types'
 import { churnReasons } from '@/data/records'
 import styles from './index.module.scss'
 
 const concernOptions = [
-  '价格', '效果', '恢复期', '疼痛感', '安全性', '医生选择', '时间安排', '对比其他机构'
+  '价格',
+  '效果',
+  '恢复期',
+  '疼痛感',
+  '安全性',
+  '医生选择',
+  '时间安排',
+  '对比其他机构'
 ]
 
 const AddRecordPage: React.FC = () => {
   const router = useRouter()
   const customerId = router.params.customerId
 
+  const customers = useAppStore((s) => s.customers)
+  const addRecord = useAppStore((s) => s.addRecord)
+  const addChurnMark = useAppStore((s) => s.addChurnMark)
+
   const customer = useMemo(() => {
-    return mockCustomers.find(c => c.id === customerId)
-  }, [customerId])
+    return customers.find((c) => c.id === customerId)
+  }, [customers, customerId])
 
   const [type, setType] = useState<CommunicationType>('wechat')
   const [attitude, setAttitude] = useState<CustomerAttitude>('neutral')
@@ -28,17 +39,17 @@ const AddRecordPage: React.FC = () => {
 
   const handleConcernToggle = (concern: string) => {
     if (selectedConcerns.includes(concern)) {
-      setSelectedConcerns(prev => prev.filter(c => c !== concern))
+      setSelectedConcerns((prev) => prev.filter((c) => c !== concern))
     } else {
-      setSelectedConcerns(prev => [...prev, concern])
+      setSelectedConcerns((prev) => [...prev, concern])
     }
   }
 
   const handleChurnReasonToggle = (reason: ChurnReason) => {
     if (selectedChurnReasons.includes(reason)) {
-      setSelectedChurnReasons(prev => prev.filter(r => r !== reason))
+      setSelectedChurnReasons((prev) => prev.filter((r) => r !== reason))
     } else {
-      setSelectedChurnReasons(prev => [...prev, reason])
+      setSelectedChurnReasons((prev) => [...prev, reason])
     }
   }
 
@@ -46,6 +57,37 @@ const AddRecordPage: React.FC = () => {
     if (!content.trim()) {
       Taro.showToast({ title: '请输入沟通内容', icon: 'none' })
       return
+    }
+
+    const now = new Date()
+    const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+
+    addRecord({
+      customerId: customerId || '',
+      customerName: customer?.name || '',
+      type,
+      date: dateStr,
+      attitude,
+      concerns: selectedConcerns,
+      content,
+      result,
+      nextFollowDate: nextFollowDate || undefined,
+      consultant: '张咨询师'
+    })
+
+    if (attitude === 'negative' && selectedChurnReasons.length > 0) {
+      const primaryReason = selectedChurnReasons[0]
+      addChurnMark({
+        customerId: customerId || '',
+        reason: primaryReason,
+        remark: selectedChurnReasons
+          .map((r) => {
+            const found = churnReasons.find((c) => c.value === r)
+            return found?.label || r
+          })
+          .join('、'),
+        date: dateStr
+      })
     }
 
     Taro.showToast({ title: '记录成功', icon: 'success' })
@@ -126,7 +168,7 @@ const AddRecordPage: React.FC = () => {
           <View className={styles.formItem}>
             <Text className={styles.formLabel}>客户关注点</Text>
             <View className={styles.concernsWrapper}>
-              {concernOptions.map(concern => (
+              {concernOptions.map((concern) => (
                 <View
                   key={concern}
                   className={`${styles.concernTag} ${selectedConcerns.includes(concern) ? styles.active : ''}`}
@@ -165,7 +207,7 @@ const AddRecordPage: React.FC = () => {
           <View className={styles.formSection}>
             <Text className={styles.sectionTitle}>流失原因标记</Text>
             <View className={styles.churnReasons}>
-              {churnReasons.map(reason => (
+              {churnReasons.map((reason) => (
                 <View
                   key={reason.value}
                   className={`${styles.churnReasonTag} ${selectedChurnReasons.includes(reason.value as ChurnReason) ? styles.active : ''}`}

@@ -292,3 +292,76 @@
   border-radius: $radius-sm;
   margin-left: $spacing-sm;
 }
+
+.renewedTag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4rpx 12rpx;
+  background: rgba(0, 180, 42, 0.1);
+  color: #00b42a;
+  font-size: $font-size-xs;
+  border-radius: $radius-sm;
+  margin-left: $spacing-sm;
+}
+
+.renewalCard {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  box-shadow: $shadow-card;
+  border: 2rpx solid rgba($color-primary, 0.15);
+}
+
+.renewalTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-sm;
+}
+
+.renewalDesc {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  margin-bottom: $spacing-md;
+  line-height: 1.5;
+}
+
+.renewalOptions {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-sm;
+}
+
+.renewalOption {
+  background: $color-bg-page;
+  border-radius: $radius-md;
+  padding: $spacing-md;
+  border: 2rpx solid transparent;
+
+  &:active {
+    border-color: $color-primary;
+    background: rgba($color-primary, 0.03);
+  }
+}
+
+.renewalOptionName {
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+  color: $color-text-primary;
+  margin-bottom: 6rpx;
+}
+
+.renewalOptionInfo {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.noRenewalCard {
+  padding: $spacing-md;
+  text-align: center;
+}
+
+.noRenewalText {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+}

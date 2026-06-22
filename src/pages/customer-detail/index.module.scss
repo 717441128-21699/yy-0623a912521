@@ -190,10 +190,60 @@
   margin-bottom: 6rpx;
 }
 
+.recordHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6rpx;
+}
+
+.recordAttitude {
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+}
+
 .recordContent {
   font-size: $font-size-sm;
   color: $color-text-secondary;
   line-height: 1.5;
+}
+
+.churnWarning {
+  margin: $spacing-lg 0 0;
+  background: rgba($color-error, 0.06);
+  border: 2rpx solid rgba($color-error, 0.2);
+  border-radius: $radius-md;
+  padding: $spacing-md;
+}
+
+.churnWarningText {
+  font-size: $font-size-sm;
+  color: $color-error;
+  font-weight: $font-weight-medium;
+  margin-bottom: 4rpx;
+}
+
+.churnWarningDate {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.renewalBadge {
+  padding: 2rpx 10rpx;
+  background: rgba(114, 46, 209, 0.1);
+  color: #722ed1;
+  font-size: $font-size-xs;
+  border-radius: $radius-sm;
+  margin-left: $spacing-sm;
+}
+
+.renewedBadge {
+  padding: 2rpx 10rpx;
+  background: rgba(0, 180, 42, 0.1);
+  color: #00b42a;
+  font-size: $font-size-xs;
+  border-radius: $radius-sm;
+  margin-left: $spacing-sm;
 }
 
 .viewAll {

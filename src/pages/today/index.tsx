@@ -3,16 +3,27 @@ import { View, Text, ScrollView } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import FilterBar from '@/components/FilterBar'
 import CustomerCard from '@/components/CustomerCard'
-import { mockCustomers } from '@/data/customers'
-import { mockCards } from '@/data/cards'
-import { getRemainder, getDaysRemaining } from '@/utils'
+import { useAppStore } from '@/store'
+import { getRemainder, getDaysRemaining, getDaysSince } from '@/utils'
 import { Customer, Card } from '@/types'
 import styles from './index.module.scss'
 
-type FilterType = 'all' | 'low_remainder' | 'expiring' | 'water' | 'photo' | 'hair' | 'antiaging'
+type FilterType =
+  | 'all'
+  | 'low_remainder'
+  | 'expiring'
+  | 'water'
+  | 'photo'
+  | 'hair'
+  | 'antiaging'
+  | 'treatment_7d'
+  | 'treatment_30d'
+  | 'treatment_over30'
 
 const TodayPage: React.FC = () => {
   const [filterType, setFilterType] = useState<FilterType>('all')
+  const customers = useAppStore((s) => s.customers)
+  const cards = useAppStore((s) => s.cards)
 
   const filterOptions = [
     { key: 'all', label: '全部' },
@@ -21,26 +32,29 @@ const TodayPage: React.FC = () => {
     { key: 'water', label: '水光' },
     { key: 'photo', label: '光电' },
     { key: 'hair', label: '脱毛' },
-    { key: 'antiaging', label: '抗衰' }
+    { key: 'antiaging', label: '抗衰' },
+    { key: 'treatment_7d', label: '7天内治疗' },
+    { key: 'treatment_30d', label: '30天内治疗' },
+    { key: 'treatment_over30', label: '超30天未治' }
   ]
 
   const todayCustomers = useMemo(() => {
-    return mockCustomers.slice(0, 6)
-  }, [])
+    return customers.slice(0, 6)
+  }, [customers])
 
   const filteredCustomers = useMemo(() => {
-    const customers = todayCustomers
+    const list = todayCustomers
 
     switch (filterType) {
       case 'low_remainder':
-        return customers.filter(customer => {
-          const customerCards = mockCards.filter(card => card.customerId === customer.id)
-          return customerCards.some(card => getRemainder(card.usedTimes, card.totalTimes) <= 2)
+        return list.filter((customer) => {
+          const customerCards = cards.filter((card) => card.customerId === customer.id)
+          return customerCards.some((card) => getRemainder(card.usedTimes, card.totalTimes) <= 2)
         })
       case 'expiring':
-        return customers.filter(customer => {
-          const customerCards = mockCards.filter(card => card.customerId === customer.id)
-          return customerCards.some(card => {
+        return list.filter((customer) => {
+          const customerCards = cards.filter((card) => card.customerId === customer.id)
+          return customerCards.some((card) => {
             const days = getDaysRemaining(card.expiryDate)
             return days <= 30 && days >= 0
           })
@@ -49,25 +63,40 @@ const TodayPage: React.FC = () => {
       case 'photo':
       case 'hair':
       case 'antiaging':
-        return customers.filter(customer => {
-          const customerCards = mockCards.filter(card => card.customerId === customer.id)
-          return customerCards.some(card => card.category === filterType)
+        return list.filter((customer) => {
+          const customerCards = cards.filter((card) => card.customerId === customer.id)
+          return customerCards.some((card) => card.category === filterType)
+        })
+      case 'treatment_7d':
+        return list.filter((customer) => {
+          const customerCards = cards.filter((card) => card.customerId === customer.id)
+          return customerCards.some((card) => getDaysSince(card.lastTreatmentDate) <= 7)
+        })
+      case 'treatment_30d':
+        return list.filter((customer) => {
+          const customerCards = cards.filter((card) => card.customerId === customer.id)
+          return customerCards.some((card) => getDaysSince(card.lastTreatmentDate) <= 30)
+        })
+      case 'treatment_over30':
+        return list.filter((customer) => {
+          const customerCards = cards.filter((card) => card.customerId === customer.id)
+          return customerCards.some((card) => getDaysSince(card.lastTreatmentDate) > 30)
         })
       default:
-        return customers
+        return list
     }
-  }, [todayCustomers, filterType])
+  }, [todayCustomers, cards, filterType])
 
   const lowRemainderCount = useMemo(() => {
-    return mockCards.filter(card => getRemainder(card.usedTimes, card.totalTimes) <= 2).length
-  }, [])
+    return cards.filter((card) => getRemainder(card.usedTimes, card.totalTimes) <= 2).length
+  }, [cards])
 
   const expiringCount = useMemo(() => {
-    return mockCards.filter(card => {
+    return cards.filter((card) => {
       const days = getDaysRemaining(card.expiryDate)
       return days <= 30 && days >= 0
     }).length
-  }, [])
+  }, [cards])
 
   const handleCustomerClick = (customer: Customer) => {
     Taro.navigateTo({
@@ -82,7 +111,7 @@ const TodayPage: React.FC = () => {
   }
 
   const getCustomerCards = (customerId: string): Card[] => {
-    return mockCards.filter(card => card.customerId === customerId)
+    return cards.filter((card) => card.customerId === customerId)
   }
 
   return (
@@ -122,7 +151,7 @@ const TodayPage: React.FC = () => {
           onRefresherRefresh={handleRefresh}
         >
           {filteredCustomers.length > 0 ? (
-            filteredCustomers.map(customer => (
+            filteredCustomers.map((customer) => (
               <CustomerCard
                 key={customer.id}
                 customer={customer}

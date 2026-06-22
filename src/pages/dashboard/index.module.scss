@@ -133,6 +133,26 @@
   margin-left: $spacing-sm;
 }
 
+.churnTag {
+  display: inline-block;
+  font-size: $font-size-xs;
+  color: #ff7d00;
+  background: rgba(255, 125, 0, 0.08);
+  padding: 2rpx 8rpx;
+  border-radius: $radius-sm;
+  margin-top: 4rpx;
+}
+
+.churnTagNegative {
+  display: inline-block;
+  font-size: $font-size-xs;
+  color: $color-error;
+  background: rgba($color-error, 0.08);
+  padding: 2rpx 8rpx;
+  border-radius: $radius-sm;
+  margin-top: 4rpx;
+}
+
 .progressCard {
   background: $color-bg-card;
   border-radius: $radius-lg;
