@@ -103,7 +103,7 @@ const CustomerDetailPage: React.FC = () => {
         {churnMark && (
           <View className={styles.churnWarning}>
             <Text className={styles.churnWarningText}>
-              流失风险：{churnReasonMap[churnMark.reason] || churnMark.remark}
+              流失风险：{churnMark.remark || churnReasonMap[churnMark.reason]}
             </Text>
             <Text className={styles.churnWarningDate}>
               标记于 {formatDate(churnMark.date)}

@@ -120,8 +120,10 @@ const DashboardPage: React.FC = () => {
         )
 
         let churnReason: string | null = null
+        let markDate: string | null = null
         if (churnMark) {
-          churnReason = churnReasonMap[churnMark.reason] || churnMark.remark
+          churnReason = churnMark.remark || churnReasonMap[churnMark.reason]
+          markDate = churnMark.date
         } else if (negativeRecords.length > 0) {
           const lastNeg = negativeRecords[0]
           if (lastNeg.churnReasons && lastNeg.churnReasons.length > 0) {
@@ -129,16 +131,28 @@ const DashboardPage: React.FC = () => {
               .map((r) => churnReasonMap[r] || r)
               .join('、')
           }
+          markDate = lastNeg.date
         }
 
         result.push({
           ...c,
           daysAgo,
           churnReason,
-          hasNegativeRecord: negativeRecords.length > 0
+          hasNegativeRecord: negativeRecords.length > 0,
+          hasChurnMark: !!churnMark,
+          markDate
         })
       }
     }
+
+    result.sort((a, b) => {
+      if (a.hasChurnMark && !b.hasChurnMark) return -1
+      if (!a.hasChurnMark && b.hasChurnMark) return 1
+      if (a.markDate && b.markDate) return b.markDate.localeCompare(a.markDate)
+      if (a.markDate && !b.markDate) return -1
+      if (!a.markDate && b.markDate) return 1
+      return b.daysAgo - a.daysAgo
+    })
 
     return result.slice(0, 5)
   }, [customers, churnMarks, records])
